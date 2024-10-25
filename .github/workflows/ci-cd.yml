@@ -1,0 +1,61 @@
+name: Terraform deploy
+
+on:
+  pull_request:
+
+permissions:
+  id-token: write
+  packages: read
+  contents: write
+
+env:
+  AWS_ACCESS_KEY_ID: ${{ secrets.SANDBOX_AWS_ACCESS_KEY_ID }}
+  AWS_SECRET_ACCESS_KEY: ${{ secrets.SANDBOX_AWS_SECRET_ACCESS_KEY }}
+
+jobs:
+  terraform-plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Aws Configure
+        run: |
+          aws configure set aws_access_key_id ${AWS_ACCESS_KEY_ID} --profile default
+          aws configure set aws_secret_access_key ${AWS_SECRET_ACCESS_KEY} --profile default
+
+      - name: Terraform Init
+        id: init
+        run: terraform init 
+
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        id: plan
+        run: terraform plan
+
+  terraform-apply:
+    environment: tf-apply
+    needs: terraform-plan
+    runs-on: ubuntu-latest
+    container: ghcr.io/moonpig/deploy-aws:ot1.8-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Aws Configure
+        run: |
+          aws configure set aws_access_key_id ${AWS_ACCESS_KEY_ID} --profile default
+          aws configure set aws_secret_access_key ${AWS_SECRET_ACCESS_KEY} --profile default
+
+      - name: Terraform Init
+        id: init
+        run: terraform init 
+
+      - name: Terraform Validate
+        id: validate
+        run: terraform validate
+
+      - name: Terraform Apply
+        id: apply
+        run: terraform apply -input=false -auto-approve
